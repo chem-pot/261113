@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>알칼리 금속 + 페놀프탈레인 용액 반응 시뮬레이션</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0f1923;
+    color: white;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    min-height: 100vh;
+  }
+
+  h1 {
+    font-size: 24px;
+    color: #e8f4fd;
+    text-shadow: 0 0 18px #4dabf7;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: #868e96;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  /* 페놀프탈레인 설명 박스 */
+  .phenol-info {
+    background: rgba(255, 107, 157, 0.08);
+    border: 1px solid rgba(255, 107, 157, 0.25);
+    border-radius: 10px;
+    padding: 10px 22px;
+    font-size: 12.5px;
+    color: #f8a5c2;
+    margin-bottom: 18px;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  .phenol-info b { color: #ff6b9d; }
+
+  /* 반응식 박스 */
+  .eq-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .eq-box {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 10px;
+    padding: 9px 16px;
+    font-size: 12.5px;
+    color: #ced4da;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* 수조 */
+  .tanks-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .tank-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .metal-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+  }
+
+  .col-li { color: #ff6b9d; }
+  .col-na { color: #ffa94d; }
+  .col-k  { color: #b197fc; }
+
+  canvas { border-radius: 10px; border: 2px solid rgba(255,255,255,0.12); }
+
+  /* pH + 색상 상태 표시 */
+  .status-box {
+    width: 180px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 12px;
+    text-align: center;
+    color: #ced4da;
+    line-height: 1.7;
+  }
+
+  .ph-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: #74c0fc;
+  }
+
+  .color-dot {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+    background: rgba(255,255,255,0.15);
+    transition: background 0.5s;
+  }
+
+  .tag {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .tag-li { background: rgba(255,107,157,0.18); color: #ff6b9d; }
+  .tag-na { background: rgba(255,169, 77,0.18); color: #ffa94d; }
+  .tag-k  { background: rgba(177,151,252,0.18); color: #b197fc; }
+
+  /* 버튼 */
+  .btn-row {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  button {
+    padding: 13px 32px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: transform .2s, box-shadow .2s;
+  }
+
+  #startBtn {
+    background: linear-gradient(135deg,#ff6b6b,#ff8e53);
+    color: white;
+    box-shadow: 0 4px 18px rgba(255,100,100,.45);
+  }
+
+  #startBtn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(255,100,100,.6);
+  }
+
+  #resetBtn {
+    background: linear-gradient(135deg,#4ecdc4,#44a8a0);
+    color: white;
+    box-shadow: 0 4px 18px rgba(78,205,196,.4);
+  }
+
+  #resetBtn:hover { transform: translateY(-3px); }
+  button:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+
+  /* 로그 */
+  .log-box {
+    background: rgba(0,0,0,.45);
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 12px;
+    padding: 14px 18px;
+    width: 620px;
+    max-width: 96vw;
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 12.5px;
+    font-family: monospace;
+    margin-bottom: 20px;
+  }
+
+  .log-box p { margin: 3px 0; animation: slideIn .4s ease; }
+
+  @keyframes slideIn {
+    from { opacity:0; transform:translateX(-8px); }
+    to   { opacity:1; transform:translateX(0); }
+  }
+
+  .l-li  { color: #ff6b9d; }
+  .l-na  { color: #ffa94d; }
+  .l-k   { color: #b197fc; }
+  .l-sys { color: #74c0fc; }
+
+  /* 반응성 비교 바 */
+  .reactivity {
+    text-align: center;
+    font-size: 13px;
+    color: #868e96;
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 9px;
+  }
+
+  .bar { height: 11px; border-radius: 6px; }
+  .b-li { background:#ff6b9d; width: 75px; }
+  .b-na { background:#ffa94d; width:125px; }
+  .b-k  { background:#b197fc; width:175px; }
+  .bl   { font-size:12px; font-weight:700; }
+</style>
+</head>
+<body>
+
+<h1>⚗️ 알칼리 금속 + 페놀프탈레인 용액 반응 시뮬레이션</h1>
+<p class="subtitle">페놀프탈레인 용액이 들어있는 물에 리튬·나트륨·칼륨을 동시에 넣으면?</p>
+
+<!-- 페놀프탈레인 설명 -->
+<div class="phenol-info">
+  🧪 <b>페놀프탈레인 지시약</b> : 산성·중성 → <b>무색</b> &nbsp;|&nbsp; 염기성(pH 8.2↑) → <b>선명한 분홍색</b><br>
+  반응이 격렬할수록 OH⁻ 이온이 빠르게 생성되어 <b>색이 더 빨리 진해져!</b>
+</div>
+
+<!-- 반응식 -->
+<div class="eq-row">
+  <div class="eq-box">
+    <b class="col-li">2Li</b> + 2H₂O → 2LiOH + H₂↑<br>
+    <span style="font-size:11px;color:#868e96">천천히 분홍색으로 변해</span>
+  </div>
+  <div class="eq-box">
+    <b class="col-na">2Na</b> + 2H₂O → 2NaOH + H₂↑<br>
+    <span style="font-size:11px;color:#868e96">빠르게 진한 분홍색으로 변해</span>
+  </div>
+  <div class="eq-box">
+    <b class="col-k">2K</b> + 2H₂O → 2KOH + H₂↑<br>
+    <span style="font-size:11px;color:#868e96">즉시 매우 진한 분홍색!</span>
+  </div>
+</div>
+
+<!-- 수조 3개 -->
+<div class="tanks-row">
+
+  <div class="tank-wrap">
+    <div class="metal-title col-li">Li · 리튬</div>
+    <canvas id="cvLi" width="180" height="260"></canvas>
+    <div class="status-box" id="statusLi">
+      <div>물 색상 : <span class="color-dot" id="dotLi"></span><span id="colorLabelLi">무색</span></div>
+      <div>pH : <span class="ph-value" id="phLi">7.0</span></div>
+    </div>
+    <div class="tag tag-li">반응 강도 ★☆☆</div>
+  </div>
+
+  <div class="tank-wrap">
+    <div class="metal-title col-na">Na · 나트륨</div>
+    <canvas id="cvNa" width="180" height="260"></canvas>
+    <div class="status-box" id="statusNa">
+      <div>물 색상 : <span class="color-dot" id="dotNa"></span><span id="colorLabelNa">무색</span></div>
+      <div>pH : <span class="ph-value" id="phNa">7.0</span></div>
+    </div>
+    <div class="tag tag-na">반응 강도 ★★☆</div>
+  </div>
+
+  <div class="tank-wrap">
+    <div class="metal-title col-k">K · 칼륨</div>
+    <canvas id="cvK" width="180" height="260"></canvas>
+    <div class="status-box" id="statusK">
+      <div>물 색상 : <span class="color-dot" id="dotK"></span><span id="colorLabelK">무색</span></div>
+      <div>pH : <span class="ph-value" id="phK">7.0</span></div>
+    </div>
+    <div class="tag tag-k">반응 강도 ★★★ 🔥</div>
+  </div>
+
+</div>
+
+<!-- 버튼 -->
+<div class="btn-row">
+  <button id="startBtn" onclick="startAll()">🔥 반응 시작!</button>
+  <button id="resetBtn" onclick="resetAll()">🔄 초기화</button>
+</div>
+
+<!-- 로그 -->
+<div class="log-box" id="logBox">
+  <p class="l-sys">▶ [안내] 반응 시작 버튼을 눌러보세요!</p>
+</div>
+
+<!-- 반응성 비교 -->
+<div class="reactivity">
+  ⚡ 반응성 크기 비교 (작음 → 큼)
+  <div class="bar-row">
+    <span class="bl col-li">Li</span><div class="bar b-li"></div>
+    <span class="bl col-na">Na</span><div class="bar b-na"></div>
+    <span class="bl col-k">K</span><div class="bar b-k"></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+//  1. 캔버스 / 컨텍스트
+// ─────────────────────────────────────────
+const CV = {
+  Li: document.getElementById('cvLi'),
+  Na: document.getElementById('cvNa'),
+  K : document.getElementById('cvK')
+};
+const CX = {
+  Li: CV.Li.getContext('2d'),
+  Na: CV.Na.getContext('2d'),
+  K : CV.K .getContext('2d')
+};
+
+// ─────────────────────────────────────────
+//  2. 금속별 설정
+// ─────────────────────────────────────────
+const CFG = {
+  Li: {
+    color       : '#ff6b9d',
+    bPerFrame   : 2,
+    bSpeed      : 1.2,
+    bSize       : 3,
+    shake       : 1.2,
+    sparks      : false,
+    duration    : 6500,
+    // 페놀프탈레인 색 변화 설정
+    colorSpeed  : 0.0012,   // 색 진해지는 속도 (느림)
+    finalPH     : 11.5,     // 최종 pH
+    phSpeed     : 0.008,    // pH 상승 속도
+    logs: [
+      '💧 Li이 물과 접촉 — 천천히 반응 시작...',
+      '🌸 페놀프탈레인이 서서히 분홍색으로 변하기 시작!',
+      '🫧 H₂ 기포 발생 중, LiOH 생성!',
+      '🩷 pH가 올라가며 색이 점점 진해지고 있어!',
+      '✅ Li 반응 완료 — 연한 분홍색 유지!'
+    ]
+  },
+  Na: {
+    color       : '#ffa94d',
+    bPerFrame   : 7,
+    bSpeed      : 2.2,
+    bSize       : 5,
+    shake       : 3.5,
+    sparks      : false,
+    duration    : 5500,
+    colorSpeed  : 0.003,    // 중간 속도
+    finalPH     : 12.5,
+    phSpeed     : 0.018,
+    logs: [
+      '⚡ Na이 물에 닿자마자 즉시 반응!!',
+      '🌸🌸 페놀프탈레인이 빠르게 분홍색으로!!',
+      '🫧🫧 H₂ 기포 격렬하게 발생, NaOH 생성!',
+      '💗 pH 급상승! 색이 빠르게 진해져!',
+      '✅ Na 반응 완료 — 진한 분홍색!'
+    ]
+  },
+  K: {
+    color       : '#b197fc',
+    bPerFrame   : 16,
+    bSpeed      : 3.8,
+    bSize       : 7,
+    shake       : 7,
+    sparks      : true,
+    duration    : 4500,
+    colorSpeed  : 0.007,    // 매우 빠름
+    finalPH     : 13.5,
+    phSpeed     : 0.04,
+    logs: [
+      '💥 K가 물에 닿자 폭발적으로 반응!!!',
+      '🌺 페놀프탈레인이 즉시 진한 분홍색으로!!',
+      '🔥 H₂에 불꽃 발생! KOH 빠르게 생성!',
+      '💖 pH 폭등! 가장 진한 분홍색!!',
+      '⚠️ 실제로는 매우 위험! 절대 혼자 하지 마!',
+      '✅ K 반응 완료 — 매우 진한 분홍색!'
+    ]
+  }
+};
+
+// ─────────────────────────────────────────
+//  3. 상태 변수
+// ─────────────────────────────────────────
+const WATER_Y = 165;
+
+let state = {};
+let tids  = [];
+
+function initState() {
+  ['Li','Na','K'].forEach(m => {
+    state[m] = {
+      active    : false,
+      rafId     : null,
+      bubbles   : [],
+      sparks    : [],
+      metalX    : 90,
+      metalVX   : 0,
+      // 페놀프탈레인 색 (0 = 무색, 1 = 진한 분홍)
+      phenolAlpha : 0,
+      currentPH   : 7.0
+    };
+  });
+  // UI 초기화
+  ['Li','Na','K'].forEach(m => {
+    updatePhenolUI(m, 0, 7.0);
+  });
+}
+
+// ─────────────────────────────────────────
+//  4. 페놀프탈레인 색 계산
+//     alpha 0~1 → rgba 값 반환
+// ─────────────────────────────────────────
+function phenolColor(alpha) {
+  // 무색(투명한 연파랑) → 진한 분홍
+  const r = Math.round(30  + (230 - 30)  * alpha);
+  const g = Math.round(90  + (50  - 90)  * alpha);
+  const b = Math.round(160 + (120 - 160) * alpha);
+  const a = 0.75 + alpha * 0.15;
+  return { r, g, b, a };
+}
+
+// ─────────────────────────────────────────
+//  5. pH UI 업데이트
+// ─────────────────────────────────────────
+function updatePhenolUI(m, alpha, ph) {
+  const dot   = document.getElementById(`dot${m}`);
+  const label = document.getElementById(`colorLabel${m}`);
+  const phEl  = document.getElementById(`ph${m}`);
+
+  // 점 색상 업데이트
+  const { r, g, b } = phenolColor(alpha);
+  dot.style.background = `rgb(${r},${g},${b})`;
+
+  // 색상 라벨
+  if (alpha < 0.05)       label.textContent = '무색 (중성)';
+  else if (alpha < 0.25)  label.textContent = '연한 분홍 🌸';
+  else if (alpha < 0.60)  label.textContent = '분홍색 💗';
+  else                    label.textContent = '진한 분홍 💖';
+
+  // pH 표시
+  phEl.textContent = ph.toFixed(1);
+
+  // pH에 따라 색상 변경
+  if (ph < 8)        phEl.style.color = '#74c0fc';
+  else if (ph < 10)  phEl.style.color = '#f8a5c2';
+  else if (ph < 12)  phEl.style.color = '#ff6b9d';
+  else               phEl.style.color = '#ff3d7f';
+}
+
+// ─────────────────────────────────────────
+//  6. 파티클 생성
+// ─────────────────────────────────────────
+function makeBubble(m) {
+  const c = CFG[m], mx = state[m].metalX;
+  return {
+    x  : mx + (Math.random() - .5) * 28,
+    y  : WATER_Y + 4,
+    r  : Math.random() * c.bSize + 1.2,
+    vx : (Math.random() - .5) * .7,
+    vy : -(Math.random() * c.bSpeed + .6),
+    a  : .75 + Math.random() * .25
+  };
+}
+
+function makeSpark(m) {
+  const mx  = state[m].metalX;
+  const col = Math.random() > .5 ? '#b197fc' : '#ff9f43';
+  return {
+    x    : mx + (Math.random() - .5) * 18,
+    y    : WATER_Y - 4,
+    vx   : (Math.random() - .5) * 5.5,
+    vy   : -(Math.random() * 7 + 2.5),
+    life : 1.0,
+    dec  : Math.random() * .045 + .028,
+    col
+  };
+}
+
+// ─────────────────────────────────────────
+//  7. 그리기 함수
+// ─────────────────────────────────────────
+function drawTank(m) {
+  const cx = CX[m];
+  const W  = 180, H = 260;
+  const s  = state[m];
+
+  // 배경
+  cx.fillStyle = '#111c29';
+  cx.fillRect(0, 0, W, H);
+
+  // ── 페놀프탈레인 물 색상 ──
+  const pc = phenolColor(s.phenolAlpha);
+
+  const wg = cx.createLinearGradient(0, WATER_Y, 0, H);
+  wg.addColorStop(0, `rgba(${pc.r}, ${pc.g}, ${pc.b}, ${pc.a})`);
+  wg.addColorStop(1, `rgba(${Math.max(0,pc.r-30)}, ${Math.max(0,pc.g-20)}, ${Math.max(0,pc.b-20)}, ${Math.min(1,pc.a+0.1)})`);
+  cx.fillStyle = wg;
+  cx.fillRect(0, WATER_Y, W, H - WATER_Y);
+
+  // 물 표면선
+  cx.strokeStyle = 'rgba(255,255,255,.28)';
+  cx.lineWidth   = 1.5;
+  cx.beginPath();
+  cx.moveTo(0, WATER_Y); cx.lineTo(W, WATER_Y);
+  cx.stroke();
+
+  // 테두리
+  cx.strokeStyle = 'rgba(255,255,255,.15)';
+  cx.lineWidth   = 3;
+  cx.strokeRect(2, 2, W-4, H-4);
+
+  // 텍스트 (중성이면 H₂O, 염기성이면 OH⁻ 표시)
+  cx.fillStyle = 'rgba(255,255,255,.25)';
+  cx.font      = '12px Arial';
+  cx.fillText(s.phenolAlpha > 0.05 ? 'OH⁻ ↑' : 'H₂O', 10, H - 12);
+}
+
+function drawMetal(m) {
+  const cx  = CX[m];
+  const cfg = CFG[m];
+  const s   = state[m];
+  const sk  = s.active ? cfg.shake : 0;
+  const sx  = s.metalX + (Math.random()-.5) * sk;
+  const sy  = WATER_Y  - 10 + (Math.random()-.5) * sk * .4;
+
+  const rg = cx.createRadialGradient(sx-5, sy-5, 2, sx, sy, 20);
+  rg.addColorStop(0,  '#ffffff');
+  rg.addColorStop(.3, cfg.color);
+  rg.addColorStop(1,  dimColor(cfg.color, 50));
+
+  cx.beginPath();
+  roundRect(cx, sx-20, sy-13, 40, 26, 6);
+  cx.fillStyle   = rg;
+  cx.fill();
+  cx.strokeStyle = 'rgba(255,255,255,.35)';
+  cx.lineWidth   = 1;
+  cx.stroke();
+
+  cx.fillStyle  = '#fff';
+  cx.font       = 'bold 14px Arial';
+  cx.textAlign  = 'center';
+  cx.fillText(m, sx, sy + 5);
+  cx.textAlign  = 'left';
+}
+
+function drawBubbles(m) {
+  const cx = CX[m];
+  state[m].bubbles.forEach(b => {
+    cx.beginPath();
+    cx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+    cx.fillStyle   = `rgba(255,220,240,${b.a*.35})`;
+    cx.fill();
+    cx.strokeStyle = `rgba(255,255,255,${b.a})`;
+    cx.lineWidth   = .9;
+    cx.stroke();
+  });
+}
+
+function drawSparks(m) {
+  const cx = CX[m];
+  state[m].sparks.forEach(sp => {
+    const [r,g,b] = hexToRgb(sp.col);
+    cx.beginPath();
+    cx.arc(sp.x, sp.y, 2.8, 0, Math.PI*2);
+    cx.fillStyle   = `rgba(${r},${g},${b},${sp.life})`;
+    cx.shadowBlur  = 9;
+    cx.shadowColor = sp.col;
+    cx.fill();
+    cx.shadowBlur  = 0;
+  });
+}
+
+// ─────────────────────────────────────────
+//  8. 애니메이션 루프
+// ─────────────────────────────────────────
+function loop(m) {
+  const cfg = CFG[m];
+  const s   = state[m];
+
+  // 페놀프탈레인 색 & pH 업데이트
+  if (s.active) {
+    // alpha 서서히 증가 (최대 1)
+    s.phenolAlpha = Math.min(1, s.phenolAlpha + cfg.colorSpeed);
+    // pH 서서히 증가 (최대 finalPH)
+    s.currentPH   = Math.min(cfg.finalPH, s.currentPH + cfg.phSpeed);
+    updatePhenolUI(m, s.phenolAlpha, s.currentPH);
+  }
+
+  drawTank(m);
+
+  if (s.active) {
+    for (let i = 0; i < cfg.bPerFrame; i++) {
+      if (Math.random() > .35) s.bubbles.push(makeBubble(m));
+    }
+    if (cfg.sparks && Math.random() > .25) s.sparks.push(makeSpark(m));
+
+    s.metalVX += (Math.random()-.5) * cfg.shake * .28;
+    s.metalVX *= .90;
+    s.metalX  += s.metalVX;
+    s.metalX   = Math.max(28, Math.min(152, s.metalX));
+  }
+
+  s.bubbles = s.bubbles.filter(b => b.y > 0 && b.a > .04);
+  s.bubbles.forEach(b => {
+    b.x += b.vx; b.y += b.vy; b.a -= .0035;
+  });
+
+  s.sparks = s.sparks.filter(sp => sp.life > 0);
+  s.sparks.forEach(sp => {
+    sp.x += sp.vx; sp.y += sp.vy;
+    sp.vy += .18;
+    sp.life -= sp.dec;
+  });
+
+  drawBubbles(m);
+  if (cfg.sparks) drawSparks(m);
+  drawMetal(m);
+
+  s.rafId = requestAnimationFrame(() => loop(m));
+}
+
+// ─────────────────────────────────────────
+//  9. 로그 출력
+// ─────────────────────────────────────────
+function log(msg, cls) {
+  const box = document.getElementById('logBox');
+  const p   = document.createElement('p');
+  const now = new Date().toLocaleTimeString();
+  p.className   = cls;
+  p.textContent = `[${now}] ${msg}`;
+  box.appendChild(p);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ─────────────────────────────────────────
+//  10. 반응 시작 / 초기화
+// ─────────────────────────────────────────
+function startAll() {
+  document.getElementById('startBtn').disabled = true;
+  log('🚀 Li · Na · K 동시 투하! 페놀프탈레인 반응 시작!', 'l-sys');
+
+  ['Li','Na','K'].forEach(m => {
+    const s   = state[m];
+    const cfg = CFG[m];
+    s.active  = true;
+    loop(m);
+
+    cfg.logs.forEach((msg, i) => {
+      const id = setTimeout(() => log(msg, `l-${m.toLowerCase()}`),
+                            600 + i * 1100 + Math.random() * 200);
+      tids.push(id);
+    });
+
+    const id = setTimeout(() => {
+      s.active = false;
+    }, cfg.duration);
+    tids.push(id);
+  });
+
+  const id = setTimeout(() =>
+    log('📊 결론: K가 가장 빠르고 진하게 분홍색으로 변했어! 반응성 K > Na > Li 확인!', 'l-sys'),
+  8500);
+  tids.push(id);
+}
+
+function resetAll() {
+  ['Li','Na','K'].forEach(m => {
+    if (state[m].rafId) cancelAnimationFrame(state[m].rafId);
+  });
+  tids.forEach(clearTimeout);
+  tids = [];
+
+  initState();
+  drawInitial();
+
+  document.getElementById('logBox').innerHTML =
+    '<p class="l-sys">▶ [안내] 반응 시작 버튼을 눌러보세요!</p>';
+
+  document.getElementById('startBtn').disabled = false;
+}
+
+// ─────────────────────────────────────────
+//  11. 유틸 함수
+// ─────────────────────────────────────────
+function hexToRgb(hex) {
+  const n = parseInt(hex.replace('#',''), 16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+
+function dimColor(hex, amt) {
+  const [r,g,b] = hexToRgb(hex);
+  return `rgb(${Math.max(0,r-amt)},${Math.max(0,g-amt)},${Math.max(0,b-amt)})`;
+}
+
+function roundRect(cx, x, y, w, h, r) {
+  cx.beginPath();
+  cx.moveTo(x+r, y);
+  cx.lineTo(x+w-r, y);
+  cx.quadraticCurveTo(x+w, y, x+w, y+r);
+  cx.lineTo(x+w, y+h-r);
+  cx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  cx.lineTo(x+r, y+h);
+  cx.quadraticCurveTo(x, y+h, x, y+h-r);
+  cx.lineTo(x, y+r);
+  cx.quadraticCurveTo(x, y, x+r, y);
+  cx.closePath();
+}
+
+// ─────────────────────────────────────────
+//  12. 초기 렌더링
+// ─────────────────────────────────────────
+function drawInitial() {
+  ['Li','Na','K'].forEach(m => {
+    drawTank(m);
+    drawMetal(m);
+  });
+}
+
+initState();
+drawInitial();
+</script>
+</body>
+</html>
